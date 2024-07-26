@@ -119,4 +119,7 @@ PicMatch leverages these incredible open-source projects:
 - **Sentence Transformers:** Turns captions into embeddings for text-based search. 
   - 👉 [https://sbert.net](https://sbert.net)
 
+- **Unsplash:** Images used were taken from Unsplash's open source data
+   - 👉 [https://github.com/unsplash/datasets](https://github.com/unsplash/datasets)
+
 Let's give credit where credit is due! 🙌 These projects make PicMatch smarter and more capable. 
