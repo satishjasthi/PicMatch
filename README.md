@@ -41,7 +41,7 @@ PicMatch lets you effortlessly search through your image archive using either a 
 
 Try PicMatch image search with 25,000 Unsplash images on this [🤗 Space](https://huggingface.co/spaces/satishjasthij/PicMatch)
 
-## 🚀 Getting Started: Let the Fun Begin!
+## 🚀 Getting Started:
 
 1. **Prerequisites:** Ensure you have Python 3.9 or higher installed on your system. 🐍
 
