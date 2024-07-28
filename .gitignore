@@ -5,3 +5,4 @@ engine/__pycache__/image_utils.cpython-39.pyc
 .DS_Store
 data_old/*
 data_temp/
+env
