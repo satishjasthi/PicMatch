@@ -39,6 +39,8 @@ custom_headers:
 
 PicMatch lets you effortlessly search through your image archive using either a text description or another image as your query.  Find those needle-in-a-haystack photos in a flash! ✨
 
+Try PicMatch image search with 25,000 Unsplash images on this [🤗 Space](https://huggingface.co/spaces/satishjasthij/PicMatch)
+
 ## 🚀 Getting Started: Let the Fun Begin!
 
 1. **Prerequisites:** Ensure you have Python 3.9 or higher installed on your system. 🐍
