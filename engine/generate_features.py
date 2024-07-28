@@ -240,7 +240,7 @@ async def main(loop: asyncio.AbstractEventLoop, input_folder: str, output_folder
 if __name__ == "__main__":
     from pathlib import Path
 
-    PROJECT_ROOT = Path(__file__).resolve().parent
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     print("Event loop created and set")

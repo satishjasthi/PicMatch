@@ -1,0 +1,11 @@
+data
+data_temp
+engine/__pycache__
+engine/checkpoint.json
+engine/pipeline_state.json
+env/
+test.jpg
+test.py
+milvus.db
+image_tracker.db
+data.zip

@@ -1,3 +1,40 @@
+---
+title: 'PicMatch: Your Visual Search Companion'
+emoji: 📷🔍
+colorFrom: blue
+colorTo: green
+sdk: gradio
+python_version: 3.9
+sdk_version: 4.39.0
+suggested_hardware: t4-small
+suggested_storage: medium
+app_file: app.py
+fullWidth: true
+header: mini
+short_description: Search images using text or other images as queries.
+models:
+- wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M
+- Salesforce/blip-image-captioning-base
+
+
+tags:
+- image search
+- visual search
+- image processing
+- CLIP
+- image captioning
+thumbnail: https://example.com/thumbnail.png
+pinned: true
+hf_oauth: false
+disable_embedding: false
+startup_duration_timeout: 30m
+custom_headers:
+  cross-origin-embedder-policy: require-corp
+  cross-origin-opener-policy: same-origin
+  cross-origin-resource-policy: cross-origin
+
+---
+
 # 📸 PicMatch: Your Visual Search Companion 🔍
 
 PicMatch lets you effortlessly search through your image archive using either a text description or another image as your query.  Find those needle-in-a-haystack photos in a flash! ✨

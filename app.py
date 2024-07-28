@@ -7,6 +7,21 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 
+def check_dirs():
+    dirs = {
+        "Data": (PROJECT_ROOT / "data"),
+        "Images": (PROJECT_ROOT / "data" / "images"),
+        "Features": (PROJECT_ROOT / "data" / "features")
+    }
+    for dir_name, dir_path in dirs.items():
+        if not dir_path.exists():
+            raise FileNotFoundError(f"{dir_name} directory not found: {dir_path}")
+
+    print("All data directories exist ✅")
+
+
+check_dirs()
+
 # Initialize the ImageSearchModule
 search = ImageSearchModule(
     image_embeddings_dir=str(PROJECT_ROOT / "data/features"),

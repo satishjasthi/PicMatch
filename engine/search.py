@@ -6,13 +6,14 @@ from glob import glob
 from PIL import Image
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from transformers import (
-    CLIPProcessor,
-    CLIPModel,
-)
+from transformers import CLIPProcessor, CLIPModel
 from sentence_transformers import SentenceTransformer
 import sqlite3
-from .vector_database import VectorDBFactory
+from .vector_database import (
+    VectorDB,
+    ImageEmbeddingCollectionSchema,
+    TextEmbeddingCollectionSchema,
+)
 
 
 class ImageSearchModule:
@@ -20,17 +21,13 @@ class ImageSearchModule:
         self,
         image_embeddings_dir: str,
         original_images_dir: str,
-        collection_name: str = "image_search",
         sqlite_db_path: str = "image_tracker.db",
     ):
         self.image_embeddings_dir = image_embeddings_dir
         self.original_images_dir = original_images_dir
-        self.image_vector_db = VectorDBFactory.create_db(
-            f"{collection_name}_image", embedding_dim=512, embedding_type="image"
-        )
-        self.text_vector_db = VectorDBFactory.create_db(
-            f"{collection_name}_text", embedding_dim=384, embedding_type="text"
-        )
+        self.vector_db = VectorDB()
+        self.vector_db.create_collection(ImageEmbeddingCollectionSchema)
+        self.vector_db.create_collection(TextEmbeddingCollectionSchema)
 
         self.clip_model = CLIPModel.from_pretrained(
             "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"
@@ -54,28 +51,9 @@ class ImageSearchModule:
         )
         self.sqlite_conn.commit()
 
-    def add_images(self, batch_size: int = 100):
+    def add_images(self):
         print("Adding images to vector databases")
         cursor = self.sqlite_conn.cursor()
-
-        def process_batch(batch_image_embeddings, batch_text_embeddings, batch_names):
-            if batch_image_embeddings and batch_text_embeddings:
-                self.image_vector_db.add_embeddings(
-                    batch_image_embeddings, batch_names, "image"
-                )
-                self.text_vector_db.add_embeddings(
-                    batch_text_embeddings, batch_names, "text"
-                )
-                cursor.executemany(
-                    "INSERT INTO added_images (image_name) VALUES (?)",
-                    [(name,) for name in batch_names],
-                )
-                self.sqlite_conn.commit()
-
-        batch_image_embeddings = []
-        batch_text_embeddings = []
-        batch_names = []
-        total_added = 0
 
         for filename in tqdm(os.listdir(self.image_embeddings_dir)):
             if filename.startswith("resized_") and filename.endswith("_clip.npy"):
@@ -83,7 +61,6 @@ class ImageSearchModule:
                     8:-9
                 ]  # Remove "resized_" prefix and "_clip.npy" suffix
 
-                # Check if the image has already been added
                 cursor.execute(
                     "SELECT 1 FROM added_images WHERE image_name = ?", (image_name,)
                 )
@@ -107,27 +84,23 @@ class ImageSearchModule:
                                 buffer.read(), dtype=np.float32
                             ).reshape(384)
 
-                        batch_image_embeddings.append(image_embedding)
-                        batch_text_embeddings.append(text_embedding)
-                        batch_names.append(image_name)
-
-                        if len(batch_image_embeddings) >= batch_size:
-                            process_batch(
-                                batch_image_embeddings,
-                                batch_text_embeddings,
-                                batch_names,
+                        if self.vector_db.insert_record(
+                            ImageEmbeddingCollectionSchema.collection_name,
+                            image_embedding,
+                            image_name,
+                        ):
+                            self.vector_db.insert_record(
+                                TextEmbeddingCollectionSchema.collection_name,
+                                text_embedding,
+                                image_name,
                             )
-                            total_added += len(batch_image_embeddings)
-                            batch_image_embeddings = []
-                            batch_text_embeddings = []
-                            batch_names = []
+                            cursor.execute(
+                                "INSERT INTO added_images (image_name) VALUES (?)",
+                                (image_name,),
+                            )
+                            self.sqlite_conn.commit()
 
-        # Process any remaining images
-        if batch_image_embeddings:
-            process_batch(batch_image_embeddings, batch_text_embeddings, batch_names)
-            total_added += len(batch_image_embeddings)
-
-        print(f"Added {total_added} new images to the databases.")
+        print("Finished adding images to vector databases")
 
     def search_by_image(
         self, query_image_path: str, top_k: int = 5, similarity_threshold: float = 0.5
@@ -138,24 +111,34 @@ class ImageSearchModule:
         try:
             query_image = Image.open(query_image_path)
             query_embedding = self._get_image_embedding(query_image)
-            return self.image_vector_db.search(
-                query_embedding, top_k, similarity_threshold, "image"
-            )
+            results = self.vector_db.client.search(
+                collection_name=ImageEmbeddingCollectionSchema.collection_name,
+                data=[query_embedding],
+                output_fields=["filename"],
+                search_params={"metric_type": "COSINE"},
+                limit=top_k,
+            ).pop()
+            return [(item["entity"]["filename"], item["distance"]) for item in results if item["distance"] >= similarity_threshold]
         except Exception as e:
             print(f"Error processing image: {e}")
             return []
 
     def search_by_text(
-        self, query_text: str, top_k: int = 5, similarity_threshold: float = 0.5
+        self, query_text: str, top_k: int = 5,similarity_threshold: float = 0.5
     ) -> List[Tuple[str, float]]:
         if not query_text.strip():
             print("Empty text query")
             return []
         try:
             query_embedding = self._get_text_embedding(query_text)
-            return self.text_vector_db.search(
-                query_embedding, top_k, similarity_threshold, "text"
-            )
+            results = self.vector_db.client.search(
+                collection_name=TextEmbeddingCollectionSchema.collection_name,
+                data=[query_embedding],
+                search_params={"metric_type": "COSINE"},
+                output_fields=["filename"],
+                limit=top_k,
+            ).pop()
+            return [(item["entity"]["filename"], item["distance"]) for item in results if item["distance"] >= similarity_threshold]
         except Exception as e:
             print(f"Error processing text: {e}")
             return []
@@ -180,8 +163,6 @@ class ImageSearchModule:
 
         num_images = min(5, len(results))
         fig, axes = plt.subplots(1, num_images, figsize=(20, 4))
-
-        # Ensure axes is always a list
         axes = [axes] if num_images == 1 else axes
 
         for i, (image_name, similarity) in enumerate(results[:num_images]):
@@ -190,7 +171,6 @@ class ImageSearchModule:
             )
             matching_files = glob(pattern)
             if matching_files:
-                # Open the first matching file
                 image_path = matching_files[0]
                 img = Image.open(image_path)
                 axes[i].imshow(img)
@@ -207,16 +187,13 @@ class ImageSearchModule:
     def __del__(self):
         if hasattr(self, "sqlite_conn"):
             self.sqlite_conn.close()
-        self.image_vector_db._milvus_server.stop()
-        self.text_vector_db._milvus_server.stop()
 
 
-# Usage example:
 if __name__ == "__main__":
     from pathlib import Path
     import requests
 
-    PROJECT_ROOT = Path(__file__).resolve().parent
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
     search = ImageSearchModule(
         image_embeddings_dir=str(PROJECT_ROOT / "data/features"),
         original_images_dir=str(PROJECT_ROOT / "data/images"),
@@ -237,4 +214,3 @@ if __name__ == "__main__":
     text_results = search.search_by_text("Images of Nature")
     print("Text search results:")
     search.display_results(text_results)
-    search.image_vector_db._milvus_server.stop()

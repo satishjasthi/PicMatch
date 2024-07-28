@@ -56,9 +56,9 @@ if __name__ == "__main__":
     from pathlib import Path
 
     PROJECT_ROOT = Path(__file__).resolve().parent
-    image_folder = str(PROJECT_ROOT / "data_old/images")
-    feature_folder = str(PROJECT_ROOT / "data_old/features")
-    sample_size = 1000
-    dest_image_folder = str(PROJECT_ROOT / "data/images")
-    dest_feature_folder = str(PROJECT_ROOT / "data/features")
+    image_folder = str(PROJECT_ROOT / "data/images")
+    feature_folder = str(PROJECT_ROOT / "data/features")
+    sample_size = 10
+    dest_image_folder = str(PROJECT_ROOT / "data_temp/images")
+    dest_feature_folder = str(PROJECT_ROOT / "data_temp/features")
     sample_images_and_features(image_folder, feature_folder, sample_size, dest_image_folder, dest_feature_folder)
